@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.v1
+    image: dernier-metro:v1
+    environment:
+      - PORT=3000
+      - HEADWAY_MIN=3
+      - LAST_WINDOW_START=00:45
+      - SERVICE_END=01:15
+    ports:
+      - "3000:3000"
+
+  swagger:
+    image: swaggerapi/swagger-ui:latest
+    environment:
+      - URL=/openapi/openapi.yaml
+    volumes:
+      - ./openapi:/usr/share/nginx/html/openapi:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api

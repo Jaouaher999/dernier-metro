@@ -10,8 +10,7 @@ COPY . .
 
 EXPOSE 3000
 
-RUN apk add --no-cache tzdata
-ENV TZ=Europe/Paris
+RUN apk add --no-cache
 ENV NODE_ENV=production \
     HEADWAY_MIN=3 \
     LAST_WINDOW_START=00:45 \

@@ -1,0 +1,175 @@
+openapi: 3.0.3
+info:
+  title: Dernier Metro API
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:3000
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+              example:
+                status: ok
+
+  /next-metro:
+    get:
+      summary: Next metro for a station
+      description: |
+        Returns next arrivals for a given station.
+        - Requires `station` query param.
+        - Optional `n` (1..5) returns multiple arrivals.
+        - When service is closed, returns a closed payload with timezone.
+      parameters:
+        - in: query
+          name: station
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: n
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+          description: Number of next arrivals to return (1..5)
+      responses:
+        "200":
+          description: Next arrivals or closed service
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      service:
+                        type: string
+                        enum: [closed]
+                      tz:
+                        type: string
+                        example: Europe/Paris
+                    required: [service, tz]
+                  - type: object
+                    properties:
+                      station:
+                        type: string
+                      line:
+                        type: string
+                        example: M1
+                      headwayMin:
+                        type: integer
+                      nextArrival:
+                        type: string
+                        pattern: '^\d{2}:\d{2}$'
+                      isLast:
+                        type: boolean
+                      tz:
+                        type: string
+                        example: Europe/Paris
+                    required:
+                      [station, line, headwayMin, nextArrival, isLast, tz]
+                  - type: object
+                    properties:
+                      station:
+                        type: string
+                      line:
+                        type: string
+                        example: M1
+                      headwayMin:
+                        type: integer
+                      tz:
+                        type: string
+                        example: Europe/Paris
+                      arrivals:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            time:
+                              type: string
+                              pattern: '^\d{2}:\d{2}$'
+                            isLast:
+                              type: boolean
+                          required: [time, isLast]
+                    required: [station, line, headwayMin, tz, arrivals]
+              examples:
+                closed:
+                  summary: Service closed
+                  value:
+                    service: closed
+                    tz: Europe/Paris
+                single:
+                  summary: Single next arrival (default)
+                  value:
+                    station: Chatelet
+                    line: M1
+                    headwayMin: 3
+                    nextArrival: "12:34"
+                    isLast: false
+                    tz: Europe/Paris
+                multiple:
+                  summary: Multiple next arrivals (n=3)
+                  value:
+                    station: Chatelet
+                    line: M1
+                    headwayMin: 3
+                    tz: Europe/Paris
+                    arrivals:
+                      - time: "12:34"
+                        isLast: false
+                      - time: "12:37"
+                        isLast: false
+                      - time: "12:40"
+                        isLast: false
+        "400":
+          description: Missing station parameter
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required: [error]
+              example:
+                error: missing station
+        "404":
+          description: Unknown station (with suggestions)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: unknown station
+                  station:
+                    type: string
+                  suggestions:
+                    type: array
+                    items:
+                      type: string
+                required: [error, station, suggestions]
+              examples:
+                withSuggestions:
+                  value:
+                    error: unknown station
+                    station: Chate
+                    suggestions: ["Chatelet", "La Defense", "Bastille"]
+                noSuggestions:
+                  value:
+                    error: unknown station
+                    station: Zzz
+                    suggestions: []
