@@ -7,8 +7,6 @@ const { computeNextMetro } = require("./computeNextMetro");
 const app = express();
 
 const ENV_HEADWAY_MIN = Number(process.env.HEADWAY_MIN || 3);
-const ENV_LAST_WINDOW_START = String(process.env.LAST_WINDOW_START || "00:45");
-const ENV_SERVICE_END = String(process.env.SERVICE_END || "01:15");
 const PORT = process.env.PORT || 3000;
 
 const KNOWN_STATIONS = [
@@ -208,3 +206,5 @@ app.use((req, res, next) => {
     console.log(`Server is running on port ${PORT}`);
   });
 })();
+
+module.exports = app;
