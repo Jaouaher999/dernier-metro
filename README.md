@@ -41,6 +41,33 @@ docker build -f Dockerfile.v1 -t dernier-metro:v1 .
 docker run --rm -p 3000:3000 dernier-metro:v1
 ```
 
+## PostgreSQL integration
+
+The API uses PostgreSQL for station validation and listing.
+
+- Environment variables (defaulted in docker-compose):
+  - `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`
+- On startup, the API will:
+  - Connect to PostgreSQL with retry
+  - Create table `stations` if it doesn't exist
+  - Seed default stations if the table is empty
+
+### Run with Docker Compose (API + DB + Swagger)
+
+```bash
+docker compose up --build
+```
+
+- API: `http://localhost:3000`
+- Swagger UI: `http://localhost:8080`
+- Postgres: `localhost:5432` (user/db/pass: `dernier_metro`)
+
+### Endpoints
+
+- `GET /health` — health including DB status
+- `GET /stations` — list of stations from DB
+- `GET /next-metro?station=NAME[&n=1..5]`
+
 ## Example responses
 
 ```json
@@ -106,4 +133,4 @@ Example (n=3):
 }
 ```
 
-- Suggestions are a basic list of known stations to help the user correct input.
+- Suggestions are fetched from the `stations` table.

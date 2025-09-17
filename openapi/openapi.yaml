@@ -23,6 +23,19 @@ paths:
               example:
                 status: ok
 
+  /stations:
+    get:
+      summary: List stations
+      responses:
+        "200":
+          description: Array of station names
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
   /next-metro:
     get:
       summary: Next metro for a station

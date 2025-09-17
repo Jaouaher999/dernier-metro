@@ -1,8 +1,19 @@
 "use strict";
 
 const express = require("express");
+const { Pool } = require("pg");
 
 const app = express();
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  return next();
+});
 
 const ENV_HEADWAY_MIN = Number(process.env.HEADWAY_MIN || 3);
 const ENV_LAST_WINDOW_START = String(process.env.LAST_WINDOW_START || "00:45");
@@ -18,6 +29,53 @@ const KNOWN_STATIONS = [
   "Nation",
 ];
 
+const pool = new Pool();
+
+async function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function connectWithRetry(maxAttempts = 10, backoffMs = 1000) {
+  let attempt = 0;
+  while (attempt < maxAttempts) {
+    attempt += 1;
+    try {
+      await pool.query("SELECT 1");
+      console.log("PostgreSQL connected");
+      return;
+    } catch (err) {
+      console.warn(
+        `PostgreSQL connection failed (attempt ${attempt}/${maxAttempts}): ${err.message}`
+      );
+      if (attempt >= maxAttempts) {
+        throw err;
+      }
+      await delay(backoffMs);
+    }
+  }
+}
+
+async function initSchemaAndSeed() {
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS stations (
+      id SERIAL PRIMARY KEY,
+      name TEXT UNIQUE NOT NULL
+    )`
+  );
+  const { rows } = await pool.query(
+    "SELECT COUNT(*)::int AS count FROM stations"
+  );
+  if (rows[0] && rows[0].count === 0) {
+    for (const name of KNOWN_STATIONS) {
+      await pool.query(
+        "INSERT INTO stations(name) VALUES($1) ON CONFLICT(name) DO NOTHING",
+        [name]
+      );
+    }
+    console.log("Seeded stations table");
+  }
+}
+
 app.use((req, res, next) => {
   const t0 = Date.now();
 
@@ -29,10 +87,15 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/health", (req, res) => {
-  return res.status(200).json({
-    status: "ok",
-  });
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    return res.status(200).json({ status: "ok" });
+  } catch (e) {
+    return res
+      .status(500)
+      .json({ status: "degraded", error: "db_unreachable" });
+  }
 });
 
 function parseHHMM(hhmm) {
@@ -109,7 +172,19 @@ function computeNextMetro(now = new Date(), headwayMin = ENV_HEADWAY_MIN) {
   };
 }
 
-app.get("/next-metro", (req, res) => {
+app.get("/stations", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT name FROM stations ORDER BY name ASC"
+    );
+    const names = result.rows.map((r) => r.name);
+    return res.status(200).json(names);
+  } catch (e) {
+    return res.status(500).json({ error: "db_error" });
+  }
+});
+
+app.get("/next-metro", async (req, res) => {
   const station = req.query.station;
   const nParam = req.query.n;
 
@@ -120,17 +195,26 @@ app.get("/next-metro", (req, res) => {
   }
 
   const normalized = String(station).trim();
-  const exists = KNOWN_STATIONS.some(
-    (s) => s.toLowerCase() === normalized.toLowerCase()
-  );
-  if (!exists) {
-    const q = normalized.toLowerCase();
-    const suggestions = KNOWN_STATIONS;
-    return res.status(404).json({
-      error: "unknown station",
-      station: normalized,
-      suggestions,
-    });
+
+  try {
+    const existsResult = await pool.query(
+      "SELECT 1 FROM stations WHERE LOWER(name)=LOWER($1) LIMIT 1",
+      [normalized]
+    );
+    const exists = existsResult.rowCount > 0;
+    if (!exists) {
+      const suggestionsResult = await pool.query(
+        "SELECT name FROM stations ORDER BY name ASC"
+      );
+      const suggestions = suggestionsResult.rows.map((r) => r.name);
+      return res.status(404).json({
+        error: "unknown station",
+        station: normalized,
+        suggestions,
+      });
+    }
+  } catch (e) {
+    return res.status(500).json({ error: "db_error" });
   }
 
   const headway = ENV_HEADWAY_MIN;
@@ -180,6 +264,15 @@ app.use((req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+(async () => {
+  try {
+    await connectWithRetry();
+    await initSchemaAndSeed();
+  } catch (err) {
+    console.error("Database initialization failed:", err.message);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+})();
