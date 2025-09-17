@@ -16,11 +16,12 @@ npm start
 - `HEADWAY_MIN` (default: `3`) — Frequency in minutes
 - `LAST_WINDOW_START` (default: `00:45`) — When `isLast` starts, format `HH:MM`
 - `SERVICE_END` (default: `01:15`) — Service end, format `HH:MM`
+- `DATABASE_URL` — PostgreSQL connection string (e.g. `postgres://user:pass@host:5432/db`)
 
 Examples (PowerShell):
 
 ```powershell
-$env:HEADWAY_MIN=5; $env:LAST_WINDOW_START="00:40"; $env:SERVICE_END="01:20"; npm start
+$env:DATABASE_URL="postgres://dernier_metro:dernier_metro@localhost:5432/dernier_metro"; npm start
 ```
 
 Examples (Docker):
@@ -30,6 +31,7 @@ docker run --rm -p 3000:3000 \
   -e HEADWAY_MIN=5 \
   -e LAST_WINDOW_START=00:40 \
   -e SERVICE_END=01:20 \
+  -e DATABASE_URL=postgres://dernier_metro:dernier_metro@localhost:5432/dernier_metro \
   dernier-metro:v1
 ```
 
@@ -45,8 +47,7 @@ docker run --rm -p 3000:3000 dernier-metro:v1
 
 The API uses PostgreSQL for station validation and listing.
 
-- Environment variables (defaulted in docker-compose):
-  - `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`
+- Uses `DATABASE_URL` for the connection string
 - On startup, the API will:
   - Connect to PostgreSQL with retry
   - Create table `stations` if it doesn't exist

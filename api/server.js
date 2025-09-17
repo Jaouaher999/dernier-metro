@@ -5,20 +5,9 @@ const { Pool } = require("pg");
 
 const app = express();
 
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-  return next();
-});
-
 const ENV_HEADWAY_MIN = Number(process.env.HEADWAY_MIN || 3);
 const ENV_LAST_WINDOW_START = String(process.env.LAST_WINDOW_START || "00:45");
 const ENV_SERVICE_END = String(process.env.SERVICE_END || "01:15");
-
 const PORT = process.env.PORT || 3000;
 
 const KNOWN_STATIONS = [
@@ -29,7 +18,21 @@ const KNOWN_STATIONS = [
   "Nation",
 ];
 
-const pool = new Pool();
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  return next();
+});
+
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? { connectionString: process.env.DATABASE_URL }
+    : undefined
+);
 
 async function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -85,17 +88,6 @@ app.use((req, res, next) => {
     console.log(`${req.method} ${req.url} ${res.statusCode} ${duration}ms`);
   });
   next();
-});
-
-app.get("/health", async (req, res) => {
-  try {
-    await pool.query("SELECT 1");
-    return res.status(200).json({ status: "ok" });
-  } catch (e) {
-    return res
-      .status(500)
-      .json({ status: "degraded", error: "db_unreachable" });
-  }
 });
 
 function parseHHMM(hhmm) {
@@ -171,6 +163,17 @@ function computeNextMetro(now = new Date(), headwayMin = ENV_HEADWAY_MIN) {
     tz,
   };
 }
+
+app.get("/health", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT 1 as TEST");
+    return res.status(200).json({ status: "ok", result: result.rows[0] });
+  } catch (e) {
+    return res
+      .status(500)
+      .json({ status: "degraded", error: "db_unreachable" });
+  }
+});
 
 app.get("/stations", async (req, res) => {
   try {

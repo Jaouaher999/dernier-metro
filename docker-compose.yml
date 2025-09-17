@@ -1,7 +1,7 @@
 services:
   api:
     build:
-      context: .
+      context: ./api
       dockerfile: Dockerfile.v1
     image: dernier-metro:v1
     environment:
@@ -9,11 +9,7 @@ services:
       - HEADWAY_MIN=3
       - LAST_WINDOW_START=00:45
       - SERVICE_END=01:15
-      - PGHOST=db
-      - PGPORT=5432
-      - PGDATABASE=dernier_metro
-      - PGUSER=dernier_metro
-      - PGPASSWORD=dernier_metro
+      - DATABASE_URL=postgres://dernier_metro:dernier_metro@db:5432/dernier_metro
     ports:
       - "3000:3000"
     depends_on:
@@ -25,6 +21,8 @@ services:
       - POSTGRES_DB=dernier_metro
       - POSTGRES_USER=dernier_metro
       - POSTGRES_PASSWORD=dernier_metro
+    volumes:
+      - db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -43,3 +41,6 @@ services:
       - "8080:8080"
     depends_on:
       - api
+
+volumes:
+  db_data:
