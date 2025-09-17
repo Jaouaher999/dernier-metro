@@ -210,6 +210,59 @@ app.get("/next-metro", async (req, res) => {
   return res.status(200).json(result);
 });
 
+app.get("/last-metro", async (req, res) => {
+  const station = req.query.station;
+  if (!station) {
+    return res.status(400).json({ error: "missing station" });
+  }
+
+  const normalized = String(station).trim();
+
+  try {
+    const existsResult = await pool.query(
+      "SELECT 1 FROM stations WHERE LOWER(name)=LOWER($1) LIMIT 1",
+      [normalized]
+    );
+    if (existsResult.rowCount === 0) {
+      return res
+        .status(404)
+        .json({ error: "unknown station", station: normalized });
+    }
+
+    const config = await pool.query(
+      "SELECT key, value FROM config WHERE key = ANY($1)",
+      [["metro.defaults", "metro.last"]]
+    );
+
+    const asMap = new Map(config.rows.map((r) => [r.key, r.value]));
+    const defaults = asMap.get("metro.defaults") || {};
+    const lastMap = asMap.get("metro.last") || {};
+
+    const line = defaults.line || "M1";
+    const tz = defaults.tz || "Europe/Paris";
+
+    let lastMetro = null;
+    const entries = Object.entries(lastMap);
+    for (const [name, value] of entries) {
+      if (String(name).toLowerCase() === normalized.toLowerCase()) {
+        lastMetro = String(value);
+        break;
+      }
+    }
+
+    if (!lastMetro) {
+      return res
+        .status(404)
+        .json({ error: "unknown station", station: normalized });
+    }
+
+    return res.status(200).json({ station: normalized, lastMetro, line, tz });
+  } catch (e) {
+    console.error("/last-metro error:", e.message);
+    return res.status(500).json({ error: "internal_error" });
+  }
+});
+
 app.use((req, res, next) => {
   return res.status(404).json({
     error: "Route not found",

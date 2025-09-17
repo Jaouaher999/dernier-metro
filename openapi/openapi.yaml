@@ -186,3 +186,82 @@ paths:
                     error: unknown station
                     station: Zzz
                     suggestions: []
+
+  /last-metro:
+    get:
+      summary: Last metro time for a station
+      description: |
+        Reads last metro configuration from the `config` table using keys:
+        - `metro.defaults` (JSON: { line, tz })
+        - `metro.last` (JSON object map: StationName -> "HH:MM")
+        Requires `station` query param (case-insensitive match).
+      parameters:
+        - in: query
+          name: station
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Last metro info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  station:
+                    type: string
+                  lastMetro:
+                    type: string
+                    pattern: '^\d{2}:\d{2}$'
+                  line:
+                    type: string
+                    example: M1
+                  tz:
+                    type: string
+                    example: Europe/Paris
+                required: [station, lastMetro, line, tz]
+              example:
+                station: Chatelet
+                lastMetro: "01:15"
+                line: M1
+                tz: Europe/Paris
+        "400":
+          description: Missing station parameter
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required: [error]
+              example:
+                error: missing station
+        "404":
+          description: Unknown station
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: unknown station
+                  station:
+                    type: string
+                required: [error, station]
+              example:
+                error: unknown station
+                station: Zzz
+        "500":
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: internal_error
+                required: [error]
