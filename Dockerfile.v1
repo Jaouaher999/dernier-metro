@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
 
@@ -14,7 +14,12 @@ RUN apk add --no-cache
 ENV NODE_ENV=production \
     HEADWAY_MIN=3 \
     LAST_WINDOW_START=00:45 \
-    SERVICE_END=01:15
+    SERVICE_END=01:15 \
+    PGHOST=db \
+    PGPORT=5432 \
+    PGDATABASE=dernier_metro \
+    PGUSER=dernier_metro \
+    PGPASSWORD=dernier_metro
 
 CMD ["node", "server.js"]
 
