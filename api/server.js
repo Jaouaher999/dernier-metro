@@ -1,7 +1,7 @@
 "use strict";
 
 const express = require("express");
-const { Pool } = require("pg");
+const { pool, connectWithRetry, initSchemaAndSeed } = require("./db/config");
 
 const app = express();
 
@@ -27,57 +27,6 @@ app.use((req, res, next) => {
   }
   return next();
 });
-
-const pool = new Pool(
-  process.env.DATABASE_URL
-    ? { connectionString: process.env.DATABASE_URL }
-    : undefined
-);
-
-async function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function connectWithRetry(maxAttempts = 10, backoffMs = 1000) {
-  let attempt = 0;
-  while (attempt < maxAttempts) {
-    attempt += 1;
-    try {
-      await pool.query("SELECT 1");
-      console.log("PostgreSQL connected");
-      return;
-    } catch (err) {
-      console.warn(
-        `PostgreSQL connection failed (attempt ${attempt}/${maxAttempts}): ${err.message}`
-      );
-      if (attempt >= maxAttempts) {
-        throw err;
-      }
-      await delay(backoffMs);
-    }
-  }
-}
-
-async function initSchemaAndSeed() {
-  await pool.query(
-    `CREATE TABLE IF NOT EXISTS stations (
-      id SERIAL PRIMARY KEY,
-      name TEXT UNIQUE NOT NULL
-    )`
-  );
-  const { rows } = await pool.query(
-    "SELECT COUNT(*)::int AS count FROM stations"
-  );
-  if (rows[0] && rows[0].count === 0) {
-    for (const name of KNOWN_STATIONS) {
-      await pool.query(
-        "INSERT INTO stations(name) VALUES($1) ON CONFLICT(name) DO NOTHING",
-        [name]
-      );
-    }
-    console.log("Seeded stations table");
-  }
-}
 
 app.use((req, res, next) => {
   const t0 = Date.now();
@@ -230,11 +179,11 @@ app.get("/next-metro", async (req, res) => {
 
   let n = 1;
   if (typeof nParam !== "undefined") {
-    const asNum = Number(nParam);
-    if (Number.isFinite(asNum)) n = Math.floor(asNum);
+    const parsedN = Number(nParam);
+    if (Number.isFinite(parsedN)) {
+      n = Math.max(1, Math.min(5, Math.floor(parsedN)));
+    }
   }
-  if (n < 1) n = 1;
-  if (n > 5) n = 5;
 
   const result = {
     station: String(station),
@@ -270,7 +219,7 @@ app.use((req, res, next) => {
 (async () => {
   try {
     await connectWithRetry();
-    await initSchemaAndSeed();
+    await initSchemaAndSeed(KNOWN_STATIONS);
   } catch (err) {
     console.error("Database initialization failed:", err.message);
   }

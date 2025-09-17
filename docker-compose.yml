@@ -1,8 +1,8 @@
 services:
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile.v1
+      context: .
+      dockerfile: ./api/Dockerfile.v1
     image: dernier-metro:v1
     environment:
       - PORT=3000
