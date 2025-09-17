@@ -51,6 +51,47 @@ async function initSchemaAndSeed(knownStations) {
     }
     console.log("Seeded stations table");
   }
+
+  // Config table
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS config (
+      key TEXT PRIMARY KEY,
+      value JSONB NOT NULL
+    )`
+  );
+
+  // Seed defaults
+  const defaultsKey = "metro.defaults";
+  const lastKey = "metro.last";
+
+  const defaultsExists = await pool.query("SELECT 1 FROM config WHERE key=$1", [
+    defaultsKey,
+  ]);
+  if (defaultsExists.rowCount === 0) {
+    const defaultsValue = { line: "M1", tz: "Europe/Paris" };
+    await pool.query("INSERT INTO config(key, value) VALUES($1, $2::jsonb)", [
+      defaultsKey,
+      JSON.stringify(defaultsValue),
+    ]);
+    console.log("Seeded config: metro.defaults");
+  }
+
+  const lastExists = await pool.query("SELECT 1 FROM config WHERE key=$1", [
+    lastKey,
+  ]);
+  if (lastExists.rowCount === 0) {
+    const lastValue = {};
+    if (Array.isArray(knownStations)) {
+      for (const name of knownStations) {
+        lastValue[name] = "01:15";
+      }
+    }
+    await pool.query("INSERT INTO config(key, value) VALUES($1, $2::jsonb)", [
+      lastKey,
+      JSON.stringify(lastValue),
+    ]);
+    console.log("Seeded config: metro.last");
+  }
 }
 
 module.exports = { pool, connectWithRetry, initSchemaAndSeed };
