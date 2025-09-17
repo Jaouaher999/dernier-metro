@@ -16,10 +16,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
+                $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
 
@@ -65,66 +62,15 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - type: object
-                    properties:
-                      service:
-                        type: string
-                        enum: [closed]
-                      tz:
-                        type: string
-                        example: Europe/Paris
-                    required: [service, tz]
-                  - type: object
-                    properties:
-                      station:
-                        type: string
-                      line:
-                        type: string
-                        example: M1
-                      headwayMin:
-                        type: integer
-                      nextArrival:
-                        type: string
-                        pattern: '^\d{2}:\d{2}$'
-                      isLast:
-                        type: boolean
-                      tz:
-                        type: string
-                        example: Europe/Paris
-                    required:
-                      [station, line, headwayMin, nextArrival, isLast, tz]
-                  - type: object
-                    properties:
-                      station:
-                        type: string
-                      line:
-                        type: string
-                        example: M1
-                      headwayMin:
-                        type: integer
-                      tz:
-                        type: string
-                        example: Europe/Paris
-                      arrivals:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            time:
-                              type: string
-                              pattern: '^\d{2}:\d{2}$'
-                            isLast:
-                              type: boolean
-                          required: [time, isLast]
-                    required: [station, line, headwayMin, tz, arrivals]
+                  - $ref: "#/components/schemas/ServiceClosed"
+                  - $ref: "#/components/schemas/SingleArrival"
+                  - $ref: "#/components/schemas/MultipleArrivals"
               examples:
                 closed:
-                  summary: Service closed
                   value:
                     service: closed
                     tz: Europe/Paris
                 single:
-                  summary: Single next arrival (default)
                   value:
                     station: Chatelet
                     line: M1
@@ -133,7 +79,6 @@ paths:
                     isLast: false
                     tz: Europe/Paris
                 multiple:
-                  summary: Multiple next arrivals (n=3)
                   value:
                     station: Chatelet
                     line: M1
@@ -151,11 +96,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                required: [error]
+                $ref: "#/components/schemas/Error400MissingStation"
               example:
                 error: missing station
         "404":
@@ -163,18 +104,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: unknown station
-                  station:
-                    type: string
-                  suggestions:
-                    type: array
-                    items:
-                      type: string
-                required: [error, station, suggestions]
+                $ref: "#/components/schemas/Error404UnknownStation"
               examples:
                 withSuggestions:
                   value:
@@ -207,20 +137,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  station:
-                    type: string
-                  lastMetro:
-                    type: string
-                    pattern: '^\d{2}:\d{2}$'
-                  line:
-                    type: string
-                    example: M1
-                  tz:
-                    type: string
-                    example: Europe/Paris
-                required: [station, lastMetro, line, tz]
+                $ref: "#/components/schemas/LastMetroResponse"
               example:
                 station: Chatelet
                 lastMetro: "01:15"
@@ -231,11 +148,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                required: [error]
+                $ref: "#/components/schemas/Error400MissingStation"
               example:
                 error: missing station
         "404":
@@ -243,14 +156,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: unknown station
-                  station:
-                    type: string
-                required: [error, station]
+                $ref: "#/components/schemas/Error404UnknownStationSimple"
               example:
                 error: unknown station
                 station: Zzz
@@ -259,9 +165,119 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: internal_error
-                required: [error]
+                $ref: "#/components/schemas/Error500Internal"
+              example:
+                error: internal_error
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    ServiceClosed:
+      type: object
+      properties:
+        service:
+          type: string
+          enum: [closed]
+        tz:
+          type: string
+      required: [service, tz]
+
+    SingleArrival:
+      type: object
+      properties:
+        station:
+          type: string
+        line:
+          type: string
+        headwayMin:
+          type: integer
+        nextArrival:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+        isLast:
+          type: boolean
+        tz:
+          type: string
+      required: [station, line, headwayMin, nextArrival, isLast, tz]
+
+    MultipleArrivals:
+      type: object
+      properties:
+        station:
+          type: string
+        line:
+          type: string
+        headwayMin:
+          type: integer
+        tz:
+          type: string
+        arrivals:
+          type: array
+          items:
+            type: object
+            properties:
+              time:
+                type: string
+                pattern: '^\d{2}:\d{2}$'
+              isLast:
+                type: boolean
+            required: [time, isLast]
+      required: [station, line, headwayMin, tz, arrivals]
+
+    LastMetroResponse:
+      type: object
+      properties:
+        station:
+          type: string
+        lastMetro:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+        line:
+          type: string
+        tz:
+          type: string
+      required: [station, lastMetro, line, tz]
+
+    Error400MissingStation:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    Error404UnknownStation:
+      type: object
+      properties:
+        error:
+          type: string
+          example: unknown station
+        station:
+          type: string
+        suggestions:
+          type: array
+          items:
+            type: string
+      required: [error, station, suggestions]
+
+    Error404UnknownStationSimple:
+      type: object
+      properties:
+        error:
+          type: string
+        station:
+          type: string
+      required: [error, station]
+
+    Error500Internal:
+      type: object
+      properties:
+        error:
+          type: string
+          example: internal_error
+      required: [error]
