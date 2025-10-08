@@ -9,7 +9,12 @@ services:
       - HEADWAY_MIN=3
       - LAST_WINDOW_START=00:45
       - SERVICE_END=01:15
-      - DATABASE_URL=postgres://dernier_metro:dernier_metro@db:5432/dernier_metro
+      - TZ=Europe/Paris
+      - PGHOST=db
+      - PGPORT=5432
+      - PGUSER=dernier_metro
+      - PGPASSWORD=dernier_metro
+      - PGDATABASE=dernier_metro
     ports:
       - "3000:3000"
     depends_on:

@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: api/package-lock.json
+      - name: Install deps (api)
+        working-directory: api
+        run: npm ci
+      - name: Lint
+        working-directory: api
+        run: npm run lint
+
+  test:
+    name: Test (API)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: dernier_metro
+          POSTGRES_USER: dernier_metro
+          POSTGRES_PASSWORD: dernier_metro
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB" 
+          --health-interval 5s 
+          --health-timeout 5s 
+          --health-retries 10
+
+    env:
+      PORT: 3000
+      HEADWAY_MIN: 3
+      LAST_WINDOW_START: "00:45"
+      SERVICE_END: "01:15"
+      TZ: Europe/Paris
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: dernier_metro
+      PGPASSWORD: dernier_metro
+      PGDATABASE: dernier_metro
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install deps (api)
+        working-directory: api
+        run: npm ci
+
+      - name: Run tests (api)
+        working-directory: api
+        run: npm test -- --ci --reporters=default --reporters=jest-junit

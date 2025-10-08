@@ -1,5 +1,7 @@
 # Dernier Metro API
 
+[![CI](https://github.com/Jaouaher999/dernier-metro/actions/workflows/ci.yml/badge.svg)](https://github.com/Jaouaher999/dernier-metro/actions/workflows/ci.yml)
+
 ## Run locally
 
 ```bash

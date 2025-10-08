@@ -1,5 +1,6 @@
 "use strict";
 
+require("dotenv").config();
 const express = require("express");
 const { pool, connectWithRetry, initSchemaAndSeed } = require("./db/config");
 const { computeNextMetro } = require("./computeNextMetro");
@@ -38,16 +39,19 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/health", async (req, res) => {
+app.get("/db-health", async (req, res) => {
   try {
     const result = await pool.query("SELECT 1 as TEST");
     return res.status(200).json({ status: "ok", result: result.rows[0] });
-  } catch (e) {
-    return res
-      .status(500)
-      .json({ status: "degraded", error: "db_unreachable" });
+  } catch (err) {
+    console.error("db-health error:", err);
+    return res.status(500).json({ status: "degraded", error: err.message });
   }
 });
+
+app.get("/health", (_req, res) =>
+  res.status(200).json({ status: "ok", service: "dernier-metro-api" })
+);
 
 app.get("/stations", async (req, res) => {
   try {
@@ -188,7 +192,7 @@ app.get("/last-metro", async (req, res) => {
   }
 });
 
-app.use((req, res, next) => {
+app.use((req, res) => {
   return res.status(404).json({
     error: "Route not found",
   });

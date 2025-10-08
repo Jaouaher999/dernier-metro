@@ -19,6 +19,49 @@ paths:
                 $ref: "#/components/schemas/HealthResponse"
               example:
                 status: ok
+                service: dernier-metro-api
+
+  /db-health:
+    get:
+      summary: Database health check
+      responses:
+        "200":
+          description: Database reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  result:
+                    type: object
+                    properties:
+                      TEST:
+                        type: integer
+                        example: 1
+                required: [status, result]
+              example:
+                status: ok
+                result:
+                  TEST: 1
+        "500":
+          description: Database degraded/unreachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: degraded
+                  error:
+                    type: string
+                required: [status, error]
+              example:
+                status: degraded
+                error: connection timeout
 
   /stations:
     get:
@@ -175,6 +218,8 @@ components:
       type: object
       properties:
         status:
+          type: string
+        service:
           type: string
       required: [status]
 

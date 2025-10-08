@@ -1,12 +1,15 @@
 "use strict";
 
+require("dotenv").config();
 const { Pool } = require("pg");
 
-const pool = new Pool(
-  process.env.DATABASE_URL
-    ? { connectionString: process.env.DATABASE_URL }
-    : undefined
-);
+const pool = new Pool({
+  host: process.env.PGHOST,
+  port: Number(process.env.PGPORT),
+  user: process.env.PGUSER,
+  password: String(process.env.PGPASSWORD),
+  database: process.env.PGDATABASE,
+});
 
 async function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -52,7 +55,6 @@ async function initSchemaAndSeed(knownStations) {
     console.log("Seeded stations table");
   }
 
-  // Config table
   await pool.query(
     `CREATE TABLE IF NOT EXISTS config (
       key TEXT PRIMARY KEY,
@@ -60,7 +62,6 @@ async function initSchemaAndSeed(knownStations) {
     )`
   );
 
-  // Seed defaults
   const defaultsKey = "metro.defaults";
   const lastKey = "metro.last";
 
