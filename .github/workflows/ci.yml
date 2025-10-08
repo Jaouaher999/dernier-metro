@@ -71,4 +71,4 @@ jobs:
 
       - name: Run tests (api)
         working-directory: api
-        run: npm test -- --ci --reporters=default --reporters=jest-junit
+        run: npm test
